@@ -3,6 +3,7 @@ from core import GAME_NAME
 from filters.players import PlayerIter
 from entities.entity import Entity
 from players.entity import Player
+from events import Event
 from commands.client import ClientCommand
 from commands.server import ServerCommand
 from messages import SayText2
@@ -14,6 +15,24 @@ def load():
 
 choices = []
 
+@Event('player_hurt')
+def player_hurt(args):
+	# Checks is player valid
+	try:
+		# Create player object
+		player = Player.from_userid(args['userid'])
+		# Is the damage more than player health
+		if args.get_int('dmg_health') >= player.health:
+			# Loop every weapon player have
+			for weapon in player.weapons():
+				# Is the weapon bomb
+				if weapon.classname == 'weapon_c4':
+					# Start the bomb delay
+					start_delay()
+	except ValueError:
+		# Player wasn't valid
+		return
+
 @ServerCommand('changelevel')
 def map_change_command(args):
 	''' Called when the map is about to be changed '''
@@ -22,54 +41,42 @@ def map_change_command(args):
 
 @ClientCommand('drop')
 def drop_command(command, index):
-	''' Called when player uses drop command '''
-	# Define player at start to be use further use
-	player = None
 	# Checks is player valid
 	try:
 		# Create player object
 		player = Player(index)
-	# The player is not valid
+		# Loop every weapon player have
+		for weapon in player.weapons():
+			# Is the weapon bomb
+			if weapon.classname == 'weapon_c4':
+				# Start the bomb delay
+				start_delay()
 	except ValueError:
-		# Set player as invalid
-		player = None
-	# Well is the player valid
-	if player:
-		# Checks player current weapon
-		try:
-			# Get the current weapon that player is carrying
-			weapon = player.get_active_weapon()
-		# The weapon is invalid
-		except AttributeError:
-			# Set weapon to be invalid
-			weapon = None
-		# Well is the weapon valid and is it the bomb
-		if weapon and weapon.classname == 'weapon_c4':
-			try:
-				# Tries find the world bomb
-				entity = Entity.find('weapon_c4')
-			# The world bomb was not found
-			except AttributeError:
-				# Set the bomb was not found
-				entity = None
-			# Well was it found
-			if entity:
-				try:
-					# Check is there currently a delay running for bomb location checker
-					running = bomb_delay.running
-				# Checks is the delay valid
-				except (ValueError, AttributeError, UnboundLocalError):
-					# There is not currently running delay
-					running = False
-				# Well is it running
-				if running:
-					# It was running, now cancel it
-					bomb_delay.cancel()
-				# The delay was not running
-				else:
-					# Set delay for finding bomb location
-					bomb_delay = entity.delay(20, find_location, (entity,))
+		# Player wasn't valid
+		return
 
+def start_delay():
+	# Find the bomb
+	entity = Entity.find('weapon_c4')
+	# Is there the bomb
+	if entity:
+		try:
+			# Check is there currently a delay running
+			running = bomb_delay.running
+		# Checks is the delay valid
+		except (AttributeError, UnboundLocalError):
+			# The delay wasn't valid
+			running = False
+		# Delay is valid
+		if running:
+			# The delay is running cancel it
+			bomb_delay.cancel()
+			# Start new bomb delay
+			bomb_delay = entity.delay(20, find_location, (entity,))
+		# The delay was not running
+		else:
+			# Set delay for finding bomb location
+			bomb_delay = entity.delay(20, find_location, (entity,))
 
 def find_location(entity):
 	# Is the bomb on the floor
@@ -80,11 +87,11 @@ def find_location(entity):
 			choices.append(player)
 		# Is there any players to be select
 		if len(choices):
-			# Get the random player who gets the bomb
+			# Select a random player who will receive the bomb
 			chosen = random.choice(choices)
-			# Move the bomb location to the player
+			# Move the bomb location to the player location
 			entity.origin = chosen.origin
 			# Tells in chat who got the bomb
-			SayText2(f'{GREEN}[Bomb Checker] » {LIGHT_GREEN}The {GREEN}lost bomb {LIGHT_GREEN}was given {GREEN}randomly {LIGHT_GREEN}to {RED}{chosen.name}').send()
+			SayText2(f'{GREEN}[Bomb Checker] » {LIGHT_GREEN}The {GREEN}lost bomb {LIGHT_GREEN}was given {LIGHT_GREEN}to {RED}{chosen.name}').send()
 		# Deletes players from random bomb giving target 
 		del choices[:]
