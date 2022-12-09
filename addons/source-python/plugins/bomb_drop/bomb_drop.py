@@ -7,7 +7,7 @@ from events import Event
 from commands.client import ClientCommand
 from commands.server import ServerCommand
 from messages import SayText2
-from colors import GREEN, LIGHT_GREEN, RED
+from messages.colors.saytext2 import GREEN, RED, BRIGHT_GREEN as LIGHT_GREEN
 
 def load():
 	if not GAME_NAME in ['cstrike', 'csgo']:
