@@ -9,6 +9,10 @@ from messages.colors.saytext2 import GREEN, RED, BRIGHT_GREEN as LIGHT_GREEN
 def load():
     if GAME_NAME != 'cstrike':
         raise ValueError('[Bomb Checker] This plugin only supports Counter-Strike: Source.')
+    find_dropped_bomb.start(20)
+
+def unload():
+    find_dropped_bomb.stop()
 
 BOMB_GIVEN = SayText2('{GREEN}[Bomb Checker] » {LIGHT_GREEN}The lost bomb has been given to {RED}{name}')
 
